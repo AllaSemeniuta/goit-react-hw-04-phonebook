@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { GlobalStyle } from './GlobalStyle';
@@ -7,33 +7,36 @@ import { Filter } from './Filter/Filter';
 import { ContactList } from './ContactList/ContactList';
 import { Box } from './Box/Box';
 
-export class App extends Component {
-  state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: '',
-  };
+const initialContacts = [
+  { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
+  { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
+  { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
+  { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
+];
 
-  componentDidMount() {
+export const App = () => {
+  const [contacts, setContacts] = useState([...initialContacts]);
+  const [filter, setFilter] = useState('');
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
     const savedContact = JSON.parse(localStorage.getItem('contacts'));
 
     if (savedContact && savedContact !== null) {
-      this.setState({ contacts: savedContact });
+      setContacts(savedContact);
     }
-  }
+  }, []);
 
-  componentDidUpdate(_, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
-  }
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
-  addContact = newContact => {
-    const { contacts } = this.state;
+  const addContact = newContact => {
+    console.log(newContact);
     if (contacts.find(({ name }) => name === newContact.name)) {
       toast.error(`Name ${newContact.name} is alredy in contacts!`, {
         position: 'top-right',
@@ -48,46 +51,39 @@ export class App extends Component {
       return;
     }
 
-    this.setState(({ contacts }) => ({
-      contacts: [newContact, ...contacts],
-    }));
+    setContacts(prevContacts => [newContact, ...prevContacts]);
   };
 
-  changeFilter = e => {
-    this.setState({ filter: e.currentTarget.value });
+  const changeFilter = e => {
+    setFilter(e.currentTarget.value);
   };
 
-  getFilteredContacts = () => {
-    const { filter, contacts } = this.state;
+  const getFilteredContacts = () => {
     const normalizedFilter = filter.trim().toLowerCase();
-
-    return contacts.filter(({ name }) =>
-      name.toLowerCase().includes(normalizedFilter)
-    );
+    console.log(contacts);
+    return [
+      ...contacts.filter(({ name }) =>
+        name.toLowerCase().includes(normalizedFilter)
+      ),
+    ];
   };
 
-  deleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(({ id }) => id !== contactId),
-    }));
+  const deleteContact = contactId => {
+    setContacts(prev => prev.filter(({ id }) => id !== contactId));
   };
-  render() {
-    const filterArr = this.getFilteredContacts();
-    return (
-      <>
-        <Box py="15px" px="30px">
-          <GlobalStyle />
-          <h1>Phonebook</h1>
-          <ContactForm onSubmit={this.addContact} />
-          <ul>Contacts</ul>
-          <Filter filter={this.state.filter} onChange={this.changeFilter} />
-          <ContactList
-            contacts={filterArr}
-            onDeleteContact={this.deleteContact}
-          />
-          <Toaster />
-        </Box>
-      </>
-    );
-  }
-}
+
+  const filterArr = getFilteredContacts();
+  return (
+    <>
+      <Box py="15px" px="30px">
+        <GlobalStyle />
+        <h1>Phonebook</h1>
+        <ContactForm onSubmit={addContact} />
+        <ul>Contacts</ul>
+        <Filter filter={filter} onChange={changeFilter} />
+        <ContactList contacts={filterArr} onDeleteContact={deleteContact} />
+        <Toaster />
+      </Box>
+    </>
+  );
+};
